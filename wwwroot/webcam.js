@@ -39,10 +39,18 @@ async function startCapture(videoElement) {
     }
 }
 
-function stopCapture(videoElement) {
-    if (mediaStream) {
-        let tracks = mediaStream.getTracks();
-        tracks.forEach(track => track.stop());
-        videoElement.srcObject = null;
-    }
+function stopCapture(videoElementId) {
+    
+        var videoElement = document.getElementById(videoElementId);
+        var stream = videoElement.srcObject;
+        
+        if (stream) {
+            var tracks = stream.getTracks();
+            tracks.forEach(function(track) {
+                track.stop();
+            });
+            
+            videoElement.srcObject = null;
+        }
+
 }
