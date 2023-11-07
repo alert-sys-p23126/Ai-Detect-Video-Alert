@@ -17,12 +17,11 @@
     }
 }
 
-
 function getFrame(src, dest, dotNetHelper) {
 
     let video = document.getElementById(src);
     let canvas = document.getElementById(dest);
-    canvas.getContext('2d').drawImage(video, 0, 0, 320, 240);
+    canvas.getContext('2d').drawImage(video, 0, 0, video.width, video.height);
 
     let dataUrl = canvas.toDataURL("image/jpeg");
     dotNetHelper.invokeMethodAsync('ProcessImage', dataUrl);
@@ -40,17 +39,35 @@ async function startCapture(videoElement) {
 }
 
 function stopCapture(videoElementId) {
-    
-        var videoElement = document.getElementById(videoElementId);
-        var stream = videoElement.srcObject;
-        
-        if (stream) {
-            var tracks = stream.getTracks();
-            tracks.forEach(function(track) {
-                track.stop();
-            });
-            
-            videoElement.srcObject = null;
-        }
 
+    var videoElement = document.getElementById(videoElementId);
+    var stream = videoElement.srcObject;
+
+    if (stream) {
+        var tracks = stream.getTracks();
+        tracks.forEach(function (track) {
+            track.stop();
+        });
+
+        videoElement.srcObject = null;
+    }
+}
+
+function loadVideoSource(videoElementId, videoSource) {
+    let video = document.getElementById(videoElementId);
+    if (video) {
+        video.src = videoSource;
+        video.load();
+    }
+}
+
+
+function playVideo(videoElementId) {
+    let video = document.getElementById(videoElementId);
+    video.play();
+}
+
+function pauseVideo(videoElementId) {
+    let video = document.getElementById(videoElementId);
+    video.pause();
 }

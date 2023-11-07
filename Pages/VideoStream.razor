@@ -1,0 +1,199 @@
+@page "/videostream"
+
+@using Azure.Storage.Blobs;
+@inject IJSRuntime JSRuntime
+@inject IConfiguration Configuration
+@implements IDisposable
+
+<h3>Video Stream</h3>
+
+<div>
+    <video id="videoFeed" width="480" height="270" loop>
+        <source id="videoSource" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    <canvas class="d-none" id="currentFrame" width="480" height="270"></canvas>
+</div>
+<div>
+    <label>Select a Video:</label>
+    <select @onchange="SelectVideo">
+        <option value="swat-soldier-with-weapon-13884574-720p.mp4">SWAT Soldier</option>
+        <option value="paintball-player-shooting-13242200-720p.mp4">Paintball Player</option>
+    </select>
+<div>
+    <button @onclick="ToggleVideo">@toggleButtonText</button>
+    <button @onclick="StartCapture">Start Capture</button>
+    <button @onclick="StopCapture">Stop Capture</button>
+</div>
+<div>@infoText</div>
+</div>
+
+<h3> Capture Last Frame</h3>
+<div>
+    @if (!string.IsNullOrEmpty(frameUri))
+    {
+        <img src="@frameUri" />
+    }
+</div>
+
+@code {
+    private bool isVideoPlaying = false;
+    private string toggleButtonText = "Play Video";
+    private string? selectedVideo;
+    private string? frameUri;
+    private string infoText = "";
+    private string? connectionString;
+    private string? containerName;
+    private bool isCapturing = false;
+    private DotNetObjectReference<VideoStream>? objRef;
+
+    protected override void OnInitialized()
+    {
+        connectionString = Configuration["ConnectionStrings:AzureBlobStorage"];
+        containerName = Configuration["AzureBlobStorage:ContainerName"];
+        objRef = DotNetObjectReference.Create(this);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        selectedVideo = "swat-soldier-with-weapon-13884574-720p.mp4";
+
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("loadVideoSource", "videoFeed", selectedVideo);
+        }
+    }
+    private async Task ToggleVideo()
+    {
+        if (isVideoPlaying)
+        {
+            await JSRuntime.InvokeVoidAsync("pauseVideo", "videoFeed");
+        }
+        else
+        {
+            if (selectedVideo == null)
+            {
+                infoText = "Please select a video first.";
+                return;
+            }
+            await JSRuntime.InvokeVoidAsync("playVideo", "videoFeed");
+        }
+
+        isVideoPlaying = !isVideoPlaying;
+        toggleButtonText = isVideoPlaying ? "Pause Video" : "Play Video";
+    }
+
+    private async Task SelectVideo(ChangeEventArgs e)
+    {
+        selectedVideo = e.Value?.ToString() ?? string.Empty;
+        isVideoPlaying = false;
+        toggleButtonText = "Play Video";
+        await JSRuntime.InvokeVoidAsync("loadVideoSource", "videoFeed", selectedVideo);
+    }
+
+    private async Task StartCapture()
+    {
+        if (isCapturing)
+        {
+            infoText = "Capture is already in progress.";
+            return;
+        }
+
+        isCapturing = true;
+        infoText = "Capture started.";
+
+        try
+        {
+            while (isCapturing)
+            {
+                await CaptureFrame();
+                await Task.Delay(1000); // Captures every 1 second
+            }
+        }
+        catch (Exception ex)
+        {
+            infoText = $"An error occurred during capture: {ex.Message}";
+            // Handle any exceptions here
+        }
+        finally
+        {
+            isCapturing = false;
+        }
+    }
+
+
+    private void StopCapture()
+    {
+        if (isCapturing)
+        {
+            isCapturing = false;
+            infoText = "Capture stopped.";
+        }
+        else
+        {
+            infoText = "Capture is not running.";
+        }
+    }
+
+    private async Task CaptureFrame()
+    {
+        // Ensure video is playing and capture is not stopped
+        if (!isVideoPlaying || !isCapturing)
+            return;
+
+        // Capture the frame
+        frameUri = await JSRuntime.InvokeAsync<String>("getFrame", "videoFeed", "currentFrame", objRef);
+        //frameUri = await JSRuntime.InvokeAsync<string>("captureFrameToCanvas", "videoFeed", "currentFrame");
+        // Upload the frame
+        //if (frameUri != String.Empty)
+        // UploadCapture();
+    }
+
+    private void UploadCapture()
+    {
+        string blobName = Guid.NewGuid().ToString() + ".png"; // Choose a unique name for your blob
+
+        if (frameUri != null)
+        {
+            try
+            {
+                byte[] imageBytes = Convert.FromBase64String(frameUri.Split(',')[1]);
+
+                BlobServiceClient blobServiceClient = new BlobServiceClient(connectionString);
+                BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+                BlobClient blobClient = containerClient.GetBlobClient(blobName);
+
+                using (MemoryStream stream = new MemoryStream(imageBytes))
+                {
+                    blobClient.UploadAsync(stream);
+                    infoText = $"Uploaded image {blobName} to Azure Blob Storage.";
+                }
+            }
+            catch (Exception ex)
+            {
+                infoText = $"Error uploading image to Azure Blob Storage: {ex.Message}";
+            }
+        }
+    }
+
+    [JSInvokable]
+    public void ProcessImage(string imageString)
+    {
+        try
+        {
+            frameUri = imageString;
+            StateHasChanged(); // Notify Blazor to update the UI
+        }
+        catch (FormatException ex)
+        {
+            // Handle the invalid base64 data gracefully
+            Console.WriteLine($"Invalid base64 data: {ex.Message}");
+        }
+    }
+    public void Dispose()
+    {
+        StopCapture(); // Ensure the capture is stopped when the component is disposed.
+                       // Dispose of other resources as necessary.
+        objRef?.Dispose();
+    }
+}

@@ -1,12 +1,20 @@
 using Ai_Detect_Video_Alert.Data;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
+
+// Increase SignalR message size
+builder.Services.Configure<HubOptions>(options =>
+{
+    options.MaximumReceiveMessageSize = 1024 * 1024; // 1MB, or use null to remove the limit
+});
+
 builder.Services.AddSingleton<WeatherForecastService>();
 builder.Services.AddSingleton(builder.Configuration);
 
@@ -21,9 +29,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseStaticFiles();
-
 app.UseRouting();
 
 app.MapBlazorHub();

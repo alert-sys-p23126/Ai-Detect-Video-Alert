@@ -9,20 +9,20 @@
 
 <div>
     <h2>Camera Preview</h2>
-    <video id="videoFeed" width="320" height="240" />
-    <canvas class="d-none" id="currentFrame" width="320" height="240" />
-    <p>
-        <button @onclick="StartCapture">Start Video</button>
-        <button @onclick="CaptureFrame">Capture Frame</button>
-        <button @onclick="StopCapture">Stop Video</button>
-        <button @onclick="UploadCapture">Upload Capture</button>
-    </p>
+    <video id="videoFeed" width="480" height="360" />
+    <canvas class="d-none" id="currentFrame" width="480" height="360" />
+    <div>
+        <p>
+            <button @onclick="StartCapture">Start Video</button>
+            <button @onclick="CaptureFrame">Capture Frame</button>
+            <button @onclick="StopCapture">Stop Video</button>
+            <button @onclick="UploadCapture">Upload Capture</button>
+        </p>
+    </div>
     <div>@infoText</div>
-    <h2>Last Frame</h2>
-
 </div>
 
-<h2> Capture Last Frame</h2>
+<h3> Capture Last Frame</h3>
 <div>
     @if (!string.IsNullOrEmpty(frameUri))
     {
