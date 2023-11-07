@@ -107,7 +107,7 @@
             while (isCapturing)
             {
                 await CaptureFrame();
-                await Task.Delay(1000); // Captures every 1 second
+                await Task.Delay(3000); // Captures every 3 seconds
             }
         }
         catch (Exception ex)
@@ -144,12 +144,10 @@
         // Capture the frame
         frameUri = await JSRuntime.InvokeAsync<String>("getFrame", "videoFeed", "currentFrame", objRef);
         //frameUri = await JSRuntime.InvokeAsync<string>("captureFrameToCanvas", "videoFeed", "currentFrame");
-        // Upload the frame
-        //if (frameUri != String.Empty)
-        // UploadCapture();
+        
     }
 
-    private void UploadCapture()
+    private async Task UploadCapture()
     {
         string blobName = Guid.NewGuid().ToString() + ".png"; // Choose a unique name for your blob
 
@@ -165,7 +163,7 @@
 
                 using (MemoryStream stream = new MemoryStream(imageBytes))
                 {
-                    blobClient.UploadAsync(stream);
+                    await blobClient.UploadAsync(stream);
                     infoText = $"Uploaded image {blobName} to Azure Blob Storage.";
                 }
             }
@@ -177,12 +175,17 @@
     }
 
     [JSInvokable]
-    public void ProcessImage(string imageString)
+    public async Task ProcessImage(string imageString)
     {
         try
         {
             frameUri = imageString;
-            StateHasChanged(); // Notify Blazor to update the UI
+            // Upload the frame
+            if (frameUri != null) 
+            {
+                await UploadCapture();
+                StateHasChanged(); // Notify Blazor to update the UI
+            }
         }
         catch (FormatException ex)
         {
